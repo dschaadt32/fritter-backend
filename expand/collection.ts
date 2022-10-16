@@ -42,6 +42,16 @@ class ExpandCollection {
     const expand = await ExpandModel.deleteOne({expandId});
     return expand !== null;
   }
+
+  /**
+ * Find a expand by expandId
+ *
+ * @param {string} expandId - The id of the expand to find
+ * @return {Promise<HydratedDocument<Expand>> | Promise<null> } - The expand with the given expandId, if any
+ */
+  static async findOne(expandId: Types.ObjectId | string): Promise<HydratedDocument<Expand>> {
+    return ExpandModel.findOne({_id: expandId});
+  }
 }
 
 export default ExpandCollection;

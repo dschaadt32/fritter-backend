@@ -1,6 +1,8 @@
 import type {Request, Response, NextFunction} from 'express';
 import {Types} from 'mongoose';
 import UserCollection from '../user/collection';
+import ExpandCollection from './collection';
+import FreetCollection from '../freet/collection';
 
 /**
  * Checks if the current session user (if any) still exists in the database, for instance,
@@ -153,6 +155,70 @@ const isAuthorExists = async (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
+/**
+ * Checks if a expand with expandId in req.body exists
+ */
+const expandExists = async (req: Request, res: Response, next: NextFunction) => {
+  const {expandId} = req.body as {expandId: string};
+
+  if (!expandId) {
+    res.status(400).json({error: `Missing ${expandId}`});
+    return;
+  }
+
+  const expand = await ExpandCollection.findOne(expandId);
+
+  if (expand) {
+    next();
+  } else {
+    res.status(401).json({error: 'Invalid expand'});
+  }
+};
+
+/**
+ * Checks if the expandedcontent of the freet in req.body is valid, i.e not a stream of empty
+ * spaces and not more than 1400 characters
+ */
+const isValidExpandedContent = (req: Request, res: Response, next: NextFunction) => {
+  const {content} = req.body as {content: string};
+  if (!content.trim()) {
+    res.status(400).json({
+      error: 'Expanded content must be at least one character long.'
+    });
+    return;
+  }
+
+  if (content.length > 1400) {
+    res.status(413).json({
+      error: 'Expand content must be no more than 1400 characters.'
+    });
+    return;
+  }
+
+  next();
+};
+
+/**
+ * Checks if the current user id equals the author of the freet the expanded is
+ * associated with is the same
+ */
+const userIdEqualsauthorId = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.session.userId) {
+    const {freetId} = req.body as {freetId: string};
+    const expand = await FreetCollection.findOne(freetId);
+    if (req.session.userId !== expand.authorId) {
+      res.status(500).json({
+        error: {
+          userNotFound: 'User attempting to edit another users expanded.'
+        }
+      });
+      return;
+    }
+  }
+
+  next();
+};
+
 export {
   isCurrentSessionUserExists,
   isUserLoggedIn,
@@ -161,5 +227,13 @@ export {
   isAccountExists,
   isAuthorExists,
   isValidUsername,
-  isValidPassword
+  isValidPassword,
+  expandExists,
+  isValidExpandedContent,
+  userIdEqualsauthorId
 };
+
+// To add
+
+// expandValidator.userIdEqualsauthorId,
+

@@ -159,8 +159,7 @@ const isAuthorExists = async (req: Request, res: Response, next: NextFunction) =
  * Checks if a expand with expandId in req.body exists
  */
 const expandExists = async (req: Request, res: Response, next: NextFunction) => {
-  const {expandId} = req.body as {expandId: string};
-
+  const expandId = req.body.id;
   if (!expandId) {
     res.status(400).json({error: `Missing ${expandId}`});
     return;
@@ -199,20 +198,39 @@ const isValidExpandedContent = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
+ * Checks if a freet with freetId is req.params exists
+ */
+const isFreetExists = async (req: Request, res: Response, next: NextFunction) => {
+  const validFormat = Types.ObjectId.isValid(req.body.freetId);
+  const freet = validFormat ? await FreetCollection.findOne(req.body.freetId) : '';
+  if (!freet) {
+    res.status(404).json({
+      error: {
+        freetNotFound: `Freet with freet ID ${req.body.freetId} does not exist.`
+      }
+    });
+    return;
+  }
+
+  next();
+};
+
+/**
  * Checks if the current user id equals the author of the freet the expanded is
  * associated with is the same
  */
 const userIdEqualsauthorId = async (req: Request, res: Response, next: NextFunction) => {
   if (req.session.userId) {
-    const {freetId} = req.body as {freetId: string};
-    const expand = await FreetCollection.findOne(freetId);
-    if (req.session.userId !== expand.authorId) {
-      res.status(500).json({
-        error: {
-          userNotFound: 'User attempting to edit another users expanded.'
-        }
-      });
-      return;
+    const freet = await FreetCollection.findOneExpandId(req.body.id);
+    if (freet) {
+      if (req.session.userId !== freet.authorId) {
+        res.status(500).json({
+          error: {
+            userNotFound: 'User attempting to edit another users expanded.'
+          }
+        });
+        return;
+      }
     }
   }
 
@@ -230,7 +248,8 @@ export {
   isValidPassword,
   expandExists,
   isValidExpandedContent,
-  userIdEqualsauthorId
+  userIdEqualsauthorId,
+  isFreetExists
 };
 
 // To add

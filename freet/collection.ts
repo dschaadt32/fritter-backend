@@ -42,6 +42,26 @@ class FreetCollection {
   }
 
   /**
+   * Find a freet by sourceId
+   *
+   * @param {string} sourceId_ - The sourceid of the freet to find
+   * @return {Promise<HydratedDocument<Freet>> | Promise<null> } - The freet with the given freetId, if any
+   */
+  static async findOneSourceId(sourceId_: Types.ObjectId | string): Promise<HydratedDocument<Freet>> {
+    return FreetModel.findOne({sourceId: sourceId_}).populate('authorId');
+  }
+
+  /**
+   * Find a freet by sourceId
+   *
+   * @param {string} sourceId_ - The sourceid of the freet to find
+   * @return {Promise<HydratedDocument<Freet>> | Promise<null> } - The freet with the given freetId, if any
+   */
+  static async findOneExpandId(expandId_: Types.ObjectId | string): Promise<HydratedDocument<Freet>> {
+    return FreetModel.findOne({expandId: expandId_}).populate('authorId');
+  }
+
+  /**
    * Get all the freets in the database
    *
    * @return {Promise<HydratedDocument<Freet>[]>} - An array of all of the freets
@@ -73,6 +93,48 @@ class FreetCollection {
     const freet = await FreetModel.findOne({_id: freetId});
     freet.content = content;
     freet.dateModified = new Date();
+    await freet.save();
+    return freet.populate('authorId');
+  }
+
+  /**
+   * Update a freet with the new content
+   *
+   * @param {string} freetId - The id of the freet to be updated
+   * @param {string} expandId - The new content of the freet
+   * @return {Promise<HydratedDocument<Freet>>} - The newly updated freet
+   */
+  static async updateOneExpandId(freetId: Types.ObjectId | string, expandId: string): Promise<HydratedDocument<Freet>> {
+    const freet = await FreetModel.findOne({_id: freetId});
+    freet.expandId = expandId;
+    await freet.save();
+    return freet.populate('authorId');
+  }
+
+  /**
+   * Update a freet with the new source
+   *
+   * @param {string} freetId - The id of the freet to be updated
+   * @param {string} sourceId - The new content of the freet
+   * @return {Promise<HydratedDocument<Freet>>} - The newly updated freet
+   */
+  static async updateOneSourceId(freetId: Types.ObjectId | string, sourceId: string): Promise<HydratedDocument<Freet>> {
+    const freet = await FreetModel.findOne({_id: freetId});
+    freet.sourceId = sourceId;
+    await freet.save();
+    return freet.populate('authorId');
+  }
+
+  /**
+   * Update a freet with the new content
+   *
+   * @param {string} freetId - The id of the freet to be updated
+   * @param {string} similarId - The new content of the freet
+   * @return {Promise<HydratedDocument<Freet>>} - The newly updated freet
+   */
+  static async updateOneSimilarId(freetId: Types.ObjectId | string, similarId: string): Promise<HydratedDocument<Freet>> {
+    const freet = await FreetModel.findOne({_id: freetId});
+    freet.similarId = similarId;
     await freet.save();
     return freet.populate('authorId');
   }

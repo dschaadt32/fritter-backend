@@ -9,39 +9,41 @@ import * as util from './util';
 const router = express.Router();
 
 /**
- * Create a expand.
+ * Create an expand.
  *
  * @name POST /api/expand
  *
  * @param {string} content - content of expand
- * @param {Freet} freet - freet that expand is associated with
+ * @param {string} freetId - freetId that expand is associated with
  * @return {ExpandResponse} - The created expand
  * @throws {403} - If there is a expand associated with the freet already
- * @throws {409} - If the freet does not exist
+ * @throws {409} - If the expand does not exist
  * @throws {400} - If content is not in correct format
  *
  */
 router.post(
   '/',
   [
-    expandValidator.isValidExpandedContent
+    expandValidator.isValidExpandedContent,
+    expandValidator.isFreetExists
   ],
   async (req: Request, res: Response) => {
-    const expand = await ExpandCollection.addOne(req.body.content, req.body.freet);
+    const expand = await ExpandCollection.addOne(req.body.content, req.body.freetId);
     req.session.expandId = expand._id.toString();
     res.status(201).json({
       message: 'Expand created successfully',
-      expand: util.constructExpandResponse(expand)
+      expand: await util.constructExpandResponse(expand)
     });
   }
 );
 
 /**
- * Update a expand's profile.
+ * Update an expand.
  *
  * @name PUT /api/expand
  *
- * @param {string} content - The new content to put in the expand
+ * @param {string} contents - The new content to put in the expand
+ * @param {string} freetId - id of the freet the expand is associated with
  * @return {ExpandResponse} - The updated expand
  * @throws {403} - If there is a expand associated with the freet already
  * @throws {409} - If the freet does not exist
@@ -53,14 +55,14 @@ router.put(
     expandValidator.isUserLoggedIn,
     expandValidator.expandExists,
     expandValidator.userIdEqualsauthorId,
-    expandValidator.isValidExpandedContent
+    expandValidator.isValidExpandedContent,
+    expandValidator.isFreetExists
   ],
   async (req: Request, res: Response) => {
-    const expandId = (req.session.expandId as string) ?? ''; // Will not be an empty string since its validated in isUserLoggedIn
-    const expand = await ExpandCollection.updateOne(expandId, req.body);
+    const expand = await ExpandCollection.updateOne(req.body.content, req.body.id, req.body.freetId);
     res.status(200).json({
       message: 'Your expand was updated successfully.',
-      expand: util.constructExpandResponse(expand)
+      expand: await util.constructExpandResponse(expand)
     });
   }
 );
@@ -76,14 +78,12 @@ router.delete(
   '/',
   [
     expandValidator.isUserLoggedIn,
-    expandValidator.expandExists,
-    expandValidator.userIdEqualsauthorId,
-    expandValidator.isValidExpandedContent
+    expandValidator.userIdEqualsauthorId
   ],
   async (req: Request, res: Response) => {
-    const expandId = (req.session.expandId as string) ?? ''; // Will not be an empty string since its validated in isUserLoggedIn
-    await ExpandCollection.deleteOne(expandId);
-    req.session.ExpandId = undefined;
+    console.log(req.body.id);
+    await ExpandCollection.deleteOne(req.body.id);
+    req.body.id = undefined;
     res.status(200).json({
       message: 'The expand has been deleted successfully.'
     });

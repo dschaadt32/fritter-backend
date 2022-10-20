@@ -8,7 +8,6 @@ type ExpandResponse = {
   _id: string;
   content: string;
   freetId: string;
-  dateModified: Date;
 };
 
 /**
@@ -19,11 +18,9 @@ type ExpandResponse = {
  * @returns {ExpandResponse} - The expand object formatted for the frontend
  */
 const constructExpandResponse = async (expand: HydratedDocument<Expand>): Promise<ExpandResponse> => ({
-
-  ...expand,
   _id: expand._id.toString(),
-  content: expand.content,
-  dateModified: (await FreetCollection.findOne(expand.freetId)).dateModified
+  freetId: expand.freetId,
+  content: expand.content
 });
 
 export {

@@ -1,134 +1,74 @@
-import type {NextFunction, Request, Response} from 'express';
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-var-requires */
+import type {Request, Response} from 'express';
 import express from 'express';
-import FreetCollection from './collection';
+import FreetCollection from '../freet/collection';
+import SimilarCollection from './collection';
 import * as userValidator from '../user/middleware';
-import * as freetValidator from '../freet/middleware';
+import * as similarValidator from './middleware';
 import * as util from './util';
+import FreetModel from '../freet/model';
 
 const router = express.Router();
 
 /**
- * Get all the freets
+ * Create an similar.
  *
- * @name GET /api/freets
+ * @name POST /api/similar
  *
- * @return {FreetResponse[]} - A list of all the freets sorted in descending
- *                      order by date modified
- */
-/**
- * Get freets by author.
+ * @param {string} freetId - freetId that similar is associated with
+ * @return {SimilarResponse} - The created similar
+ * @throws {403} - If there is a similar associated with the freet already
+ * @throws {409} - If the similar does not exist
+ * @throws {400} - If content is not in correct format
  *
- * @name GET /api/freets?authorId=id
- *
- * @return {FreetResponse[]} - An array of freets created by user with id, authorId
- * @throws {400} - If authorId is not given
- * @throws {404} - If no user has given authorId
- *
- */
-router.get(
-  '/',
-  async (req: Request, res: Response, next: NextFunction) => {
-    // Check if authorId query parameter was supplied
-    if (req.query.author !== undefined) {
-      next();
-      return;
-    }
-
-    const allFreets = await FreetCollection.findAll();
-    const response = allFreets.map(util.constructFreetResponse);
-    res.status(200).json(response);
-  },
-  [
-    userValidator.isAuthorExists
-  ],
-  async (req: Request, res: Response) => {
-    const authorFreets = await FreetCollection.findAllByUsername(req.query.author as string);
-    const response = authorFreets.map(util.constructFreetResponse);
-    res.status(200).json(response);
-  }
-);
-
-/**
- * Create a new freet.
- *
- * @name POST /api/freets
- *
- * @param {string} content - The content of the freet
- * @return {FreetResponse} - The created freet
- * @throws {403} - If the user is not logged in
- * @throws {400} - If the freet content is empty or a stream of empty spaces
- * @throws {413} - If the freet content is more than 140 characters long
  */
 router.post(
   '/',
   [
-    userValidator.isUserLoggedIn,
-    freetValidator.isValidFreetContent
+    similarValidator.isFreetExists
   ],
   async (req: Request, res: Response) => {
-    const userId = (req.session.userId as string) ?? ''; // Will not be an empty string since its validated in isUserLoggedIn
-    const freet = await FreetCollection.addOne(userId, req.body.content);
-
+    const [freetid1, freetid2] = await findTwoMostSimilar(req.body.freetId);
+    // Const freetid1 = '6350b400179516112f0c6a38';
+    // Const freetid2 = '634c817df712b18b3e95a157';
+    const similar = await SimilarCollection.addOne(freetid1.toString(), freetid2.toString(), req.body.freetId);
+    req.session.similarId = similar._id.toString();
     res.status(201).json({
-      message: 'Your freet was created successfully.',
-      freet: util.constructFreetResponse(freet)
+      message: 'Similar created successfully',
+      similar: await util.constructSimilarResponse(similar)
     });
   }
 );
 
-/**
- * Delete a freet
- *
- * @name DELETE /api/freets/:id
- *
- * @return {string} - A success message
- * @throws {403} - If the user is not logged in or is not the author of
- *                 the freet
- * @throws {404} - If the freetId is not valid
- */
-router.delete(
-  '/:freetId?',
-  [
-    userValidator.isUserLoggedIn,
-    freetValidator.isFreetExists,
-    freetValidator.isValidFreetModifier
-  ],
-  async (req: Request, res: Response) => {
-    await FreetCollection.deleteOne(req.params.freetId);
-    res.status(200).json({
-      message: 'Your freet was deleted successfully.'
-    });
-  }
-);
+// Logic taken from https://www.npmjs.com/package/sentence-similarity
+const findTwoMostSimilar = async (freetId: string) => {
+  const similarity = require('sentence-similarity');
+  const similarityScore = require('similarity-score');
 
-/**
- * Modify a freet
- *
- * @name PUT /api/freets/:id
- *
- * @param {string} content - the new content for the freet
- * @return {FreetResponse} - the updated freet
- * @throws {403} - if the user is not logged in or not the author of
- *                 of the freet
- * @throws {404} - If the freetId is not valid
- * @throws {400} - If the freet content is empty or a stream of empty spaces
- * @throws {413} - If the freet content is more than 140 characters long
- */
-router.put(
-  '/:freetId?',
-  [
-    userValidator.isUserLoggedIn,
-    freetValidator.isFreetExists,
-    freetValidator.isValidFreetModifier,
-    freetValidator.isValidFreetContent
-  ],
-  async (req: Request, res: Response) => {
-    const freet = await FreetCollection.updateOne(req.params.freetId, req.body.content);
-    res.status(200).json({
-      message: 'Your freet was updated successfully.',
-      freet: util.constructFreetResponse(freet)
-    });
-  }
-);
+  const winkOpts = {f: similarityScore.winklerMetaphone, options: {threshold: 0}};
 
-export {router as freetRouter};
+  const freet = await FreetCollection.findOne(freetId);
+  const targetContent = freet.content.split(' ');
+  const best = ['', 0];
+  const second_best = ['', 0];
+  const allFreets = await FreetModel.find({});
+  for (const freet of allFreets) {
+    if (freet.id !== freetId) {
+      const sim_score = similarity(freet.content.split(' '), targetContent, winkOpts).score;
+
+      if (best[0] === '' || sim_score > best[1]) {
+        best[0] = freet.id;
+        best[1] = sim_score;
+      } else if (second_best[0] === '' || sim_score > second_best[1]) {
+        second_best[0] = freet.id;
+        second_best[1] = sim_score;
+      }
+    }
+  }
+
+  return [best[0], second_best[0]];
+};
+
+export {router as SimilarRouter};

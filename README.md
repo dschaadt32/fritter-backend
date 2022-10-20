@@ -313,3 +313,78 @@ This renders the `index.html` file that will be used to interact with the backen
 **Throws**
 
 - `403` if the user is not logged in
+
+#### `POST /api/expand` - Create an expand
+
+**Returns**
+
+- The created expand
+
+**Throws**
+
+- `403` - If there is a expand associated with the freet already
+- `409` - If the expand does not exist
+- `400` - If content is not in correct format
+
+#### `PUT /api/expand` - Update an expand
+
+**Returns**
+
+- The updated expand
+
+**Throws**
+
+- `409` - If the expand does not exist
+- `400` - If content is not in correct format
+
+#### `DELETE /api/expand` - Delete an expand
+
+**Returns**
+
+- A success message
+
+**Throws**
+
+- `403` - If the expand does not exist
+
+#### `POST /api/source` - Create a source
+
+**Returns**
+
+- The created source
+
+**Throws**
+
+- `403` - If there is a source associated with the freet already
+- `400` - If source is not in correct format
+
+#### `PUT /api/source` - Update a source
+
+**Returns**
+
+- The updated source
+
+**Throws**
+
+- `409` - If the source does not exist
+- `400` - If source is not in correct format
+
+#### `DELETE /api/source` - Delete a source
+
+**Returns**
+
+- A success message
+
+**Throws**
+
+- `403` - If the source does not exist
+
+#### `POST /api/similar` - Create a similar
+
+**Returns**
+
+- The created similar
+
+**Throws**
+
+- `409` - If the freet does not exist
